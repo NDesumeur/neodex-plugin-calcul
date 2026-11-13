@@ -1,0 +1,24 @@
+{
+  "id": "neodex.calcul",
+  "name": "Calcul mental",
+  "version": "1.0.0",
+  "author": "NDesumeur",
+  "description": "Calcul mental en pixel art : des séries de 10 calculs contre la montre, par paliers. Additions, soustractions, tables, divisions, puis deux opérations, carrés et pourcentages. Tape le résultat ou choisis parmi 4 réponses, au clavier, à la souris ou à la manette. 8 sur 10 ouvrent le palier suivant.",
+  "icon": "icon.png",
+  "entry": "index.js",
+  "view": "calcul",
+  "neobase": ">=4.0.0",
+  "type": "app",
+  "category": "Jeux",
+  "compatibility": ["windows", "linux"],
+  "syncMode": "progression",
+  "syncInfo": "Paliers, étoiles et records.",
+  "gamepad": true,
+  "mobile": false,
+  "system": false,
+  "dependencies": {},
+  "sdk": "2.1.0",
+  "permissions": [
+    "storage"
+  ]
+}
