@@ -5,14 +5,16 @@ const HTML = `<div class="appWrap wide">
   <div class="gMain"><div class="gameBox"><canvas id="cmCanvas" width="240" height="136" role="img" aria-label="Calcul mental"></canvas></div>
     <div class="gSide">
       <div class="sysCard"><b>RECORDS</b><div class="gStats" id="cmStats"></div></div>
-      <div class="row"><select class="gSel" id="cmLevel"></select><button class="btn main" id="cmNew">NOUVELLE SÉRIE</button></div>
+      <div class="row"><select class="gSel" id="cmLevel"></select><button class="btn main" id="cmNew">NOUVELLE SÉRIE</button><button class="btn" id="cmFs">PLEIN ÉCRAN</button></div>
       <div class="hint">Dix calculs, chacun contre la montre. Plus tu réponds vite, plus tu marques de points. 8 bonnes réponses sur 10 ouvrent le palier suivant ; 9 donnent deux étoiles, 10 les trois. Additions, soustractions, tables, divisions, puis des calculs à deux opérations, les carrés et les pourcentages.</div>
     </div></div>
 </div>`;
 const CSS = `.gMain{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
-.gameBox{display:grid;place-items:center;padding:10px;background:#05010b;flex:0 0 auto;position:relative}
-.gameBox canvas{height:min(72vh,560px);width:auto;aspect-ratio:240/136;image-rendering:pixelated;cursor:var(--cp,pointer);touch-action:none}
-.gSide{display:flex;flex-direction:column;gap:14px;flex:1;min-width:250px;max-width:420px}
+.gameBox{display:grid;place-items:center;padding:10px;background:#05010b;flex:2 1 560px;min-width:min(100%,560px);position:relative}
+.gameBox canvas{width:min(100%,max(320px,calc((100vh - 200px) * 240 / 136)));height:auto;aspect-ratio:240/136;image-rendering:pixelated;cursor:var(--cp,pointer);touch-action:none}
+.gameBox:fullscreen{padding:0;display:grid;place-items:center}
+.gameBox:fullscreen canvas{width:min(100vw,calc(100vh * 240 / 136))}
+.gSide{display:flex;flex-direction:column;gap:14px;flex:0 1 320px;min-width:250px}
 .gSide .sysCard{display:flex;flex-direction:column}
 .gStats{display:grid;grid-template-columns:1fr auto;gap:4px 14px}
 .gStats b{text-align:right}`;
@@ -294,8 +296,10 @@ export default async function (ctx) {
   const seeded = s => () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const pxFont = (g, text, x, y, color, size = 8, align = 'left') => { const s = PXK.scale(size); PXK.fill(g, text, x + s, y + s, '#05010b', s, align); PXK.fill(g, text, x, y, color, s, align); };
   const gameText = (g, w, lines, y0) => {  // lignes centrées en police pixel, sur une bande sombre
-    g.fillStyle = 'rgba(11,3,28,.78)'; g.fillRect(0, y0 - 14, w, lines.length * 14 + 14);
-    lines.forEach(([text, color, size], i) => PXK.fill(g, text, w / 2, y0 + i * 14, color, PXK.scale(size), 'center'));
+    const sc = lines.map(l => PXK.scale(l[2])), ys = []; let y = y0;  // chaque ligne descend de sa propre hauteur : les grosses lettres ne chevauchent plus la ligne d'au-dessus
+    sc.forEach((s, i) => { if (i) y += 11 * s + 3; ys.push(y); });
+    g.fillStyle = 'rgba(11,3,28,.78)'; g.fillRect(0, y0 - 9 * sc[0] - 5, w, y - y0 + 9 * sc[0] + 12);
+    lines.forEach(([text, color], i) => PXK.fill(g, text, w / 2, ys[i], color, sc[i], 'center'));
   };
   const theme = (acc, accL, accS, accD, acc2, base = ['#0c0a12', '#16121e', '#221c2c', '#2e263a', '#3a3046', '#62566e']) => {
     const [k, k2, fill, fillOn, hl, line] = base;
@@ -397,7 +401,7 @@ export default async function (ctx) {
     if (st.mode === 'ready') gameText(g, W, [['PALIER ' + st.lvl + ' · ' + LEVELS[st.lvl - 1][0].toUpperCase(), '#5ad0ff', 12], ['10 calculs contre la montre', '#ffffff'], ['Tape le résultat ou choisis-le', '#b8d0ff'], ['Entrée : commencer', '#b8b0c8']], 44);
     if (st.mode === 'pause') gameText(g, W, [['PAUSE', '#5ad0ff', 12], ['Entrée : reprendre', '#b8b0c8']], 60);
     if (st.mode === 'over' && st.dead > 20) gameText(g, W, [[st.stars ? 'BRAVO !' : 'PRESQUE…', st.stars ? '#7ee07a' : '#ff8a3a', 12], ['★'.repeat(st.stars) + '☆'.repeat(3 - st.stars), '#ffd84a', 12],
-      [st.ok + ' sur 10 · ' + st.score + ' points' + (st.newBest ? ' · record !' : ''), '#ffffff'], [st.stars ? (st.lvl < LEVELS.length ? 'Entrée : palier suivant' : 'Tous les paliers sont finis !') : 'Il faut 8 sur 10 · Entrée : recommencer', '#b8b0c8']], 40);
+      [st.ok + ' sur 10 · ' + st.score + ' points' + (st.newBest ? ' · record !' : ''), '#ffffff'], [st.stars ? (st.lvl < LEVELS.length ? 'Entrée : palier suivant' : 'Tous les paliers sont finis !') : 'Il faut 8 sur 10 · Entrée : recommencer', '#b8b0c8']], 36);
     if (st.tick % 15 === 0) g.canvas.setAttribute('aria-label', 'Calcul mental, palier ' + st.lvl + ', calcul ' + Math.min(N, st.i + 1) + ' sur 10 : ' + st.q + ' = ? Réponses : ' + st.ch.join(', ') + (st.mode === 'over' ? ', série finie : ' + st.ok + ' sur 10' : '') + '.');
   }
   function info() {
@@ -427,6 +431,7 @@ export default async function (ctx) {
       const i = hit(at(e)); if (i !== undefined) answer(st.ch[i]); };
   }
   $('cmNew').onclick = () => { start(+lvlSel.value || 1); $('cmNew').blur(); };
+  $('cmFs').onclick = () => { $('cmFs').blur(); if (document.fullscreenElement) document.exitFullscreen(); else $('cmCanvas').parentElement.requestFullscreen?.().catch(() => {}); };
   padKeys();
   fillLevels(); lvlSel.value = String(save.level);
   {  // vérification : chaque palier donne des calculs justes et entiers, 4 réponses différentes dont la bonne ; 10 bonnes réponses ouvrent le palier suivant

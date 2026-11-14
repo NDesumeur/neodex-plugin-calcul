@@ -13,5 +13,13 @@ module.exports = async ({ pj, sleep }) => {
   await sleep(600);
   const l = await label();
   if (!/série finie : 10 sur 10/.test(l)) throw new Error('la série devait finir à 10 sur 10 : « ' + l + ' »');
-  return l;
+  // plein écran, et l'ardoise qui tient dans la fenêtre
+  await pj(`document.getElementById('cmFs').click(), 0`); await sleep(700);
+  const fs = await pj(`(() => { const c = document.getElementById('cmCanvas'), r = c.getBoundingClientRect(); return document.fullscreenElement === c.parentElement && (Math.abs(r.height - innerHeight) < 3 || Math.abs(r.width - innerWidth) < 3); })()`);
+  await pj(`document.fullscreenElement && document.exitFullscreen(), 0`); await sleep(300);
+  if (!fs) throw new Error('le plein écran ne remplit pas l’écran');
+  const L = await pj(`(() => { const r = document.getElementById('cmCanvas').getBoundingClientRect(); let s = 0; for (let e = document.getElementById('cmCanvas').parentElement; e; e = e.parentElement) s += e.scrollTop; return { bottom: Math.round(r.bottom + s), h: Math.round(r.height), wh: innerHeight, ww: innerWidth, sw: document.documentElement.scrollWidth }; })()`);
+  if (process.env.NEO_FIT_LOG) console.log('FIT', JSON.stringify(L));
+  if (L.bottom > L.wh + 1 || L.sw > L.ww + 1) throw new Error('la zone de jeu dépasse la fenêtre : ' + JSON.stringify(L));
+  return l + ' · plein écran · ardoise ' + L.h + ' px dans ' + L.ww + '×' + L.wh;
 };

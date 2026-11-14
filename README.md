@@ -9,6 +9,7 @@ Des séries de 10 calculs rapides, contre la montre, par paliers de plus en plus
 - **Clavier** : tape le résultat avec les chiffres, **Entrée** pour valider, **Retour arrière** pour corriger.
 - Ou choisis parmi les **4 réponses** : **flèches** puis **Entrée**, ou un clic.
 - **Manette** : la croix ou le stick choisit une réponse, **A** valide, **Start** met en pause.
+- **Plein écran** : le bouton à côté de Nouvelle série (Échap pour revenir). L'ardoise prend toute la place de la fenêtre, petite ou grande.
 - **P** ou **Échap** : pause.
 
 ## Les paliers

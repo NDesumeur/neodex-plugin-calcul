@@ -9,6 +9,7 @@ Series of 10 quick sums against the clock, in harder and harder tiers. In pixel 
 - **Keyboard**: type the result, **Enter** to confirm, **Backspace** to fix.
 - Or pick one of the **4 answers**: **arrows** then **Enter**, or a click.
 - **Gamepad**: d-pad or stick picks an answer, **A** confirms, **Start** pauses.
+- **Full screen**: the button next to New series (Esc to come back). The slate takes all the room of the window, small or large.
 - **P** or **Escape**: pause.
 
 ## Tiers
