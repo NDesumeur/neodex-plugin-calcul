@@ -7,6 +7,7 @@ const HTML = `<div class="appWrap wide">
       <div class="sysCard"><b>RECORDS</b><div class="gStats" id="cmStats"></div></div>
       <div class="row"><select class="gSel" id="cmLevel"></select><button class="btn main" id="cmNew">NOUVELLE SÉRIE</button><button class="btn" id="cmFs">PLEIN ÉCRAN</button></div>
       <div class="hint">Dix calculs, chacun contre la montre. Plus tu réponds vite, plus tu marques de points. 8 bonnes réponses sur 10 ouvrent le palier suivant ; 9 donnent deux étoiles, 10 les trois. Additions, soustractions, tables, divisions, puis des calculs à deux opérations, les carrés et les pourcentages.</div>
+      <div class="hint">2 minutes chrono : le plus de calculs possible en deux minutes (additions et soustractions jusqu'à 200, tables jusqu'à 12 × 100, divisions). Tape le résultat : dès qu'il est juste, le calcul suivant arrive, sans Entrée. Le défi du jour : les mêmes calculs pour tout le monde, une fois par jour.</div>
     </div></div>
 </div>`;
 const CSS = `.gMain{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
@@ -348,7 +349,37 @@ export default async function (ctx) {
     ['Expert', 720, () => { const a = r(3, 15), b = r(3, 15), c = r(10, 99); return Math.random() < .5 ? [a + ' × ' + b + ' + ' + c, a * b + c] : [c + ' − ' + a + ' × ' + Math.min(b, Math.floor(c / a)), c - a * Math.min(b, Math.floor(c / a))]; }],
   ];
   const lvlSel = $('cmLevel');
-  const fillLevels = () => lvlSel.replaceChildren(...LEVELS.map(([n], i) => { const o = el('option', '', 'Palier ' + (i + 1) + ' · ' + n + (save.stars[i + 1] ? ' ' + '★'.repeat(save.stars[i + 1]) : '')); o.value = i + 1; o.disabled = i + 1 > save.level; return o; }));
+  const fillLevels = () => lvlSel.replaceChildren(...LEVELS.map(([n], i) => { const o = el('option', '', 'Palier ' + (i + 1) + ' · ' + n + (save.stars[i + 1] ? ' ' + '★'.repeat(save.stars[i + 1]) : '')); o.value = i + 1; o.disabled = i + 1 > save.level; return o; }),
+    Object.assign(el('option', '', '2 minutes chrono'), {value: 'z'}), Object.assign(el('option', '', 'Défi du jour (2 minutes)'), {value: 'j'}));
+  /* ---------- 2 minutes chrono (façon Zetamac) : les calculs s'enchaînent, chacun validé dès que le résultat tapé est juste ; le défi du jour
+     tire les mêmes calculs pour tout le monde. On garde le temps moyen par opération ---------- */
+  const ZT = 120 * 60, ZOPS = ['+', '−', '×', '÷'];
+  save.z ??= {best: 0, games: 0, sum: 0, ops: {'+': [0, 0], '−': [0, 0], '×': [0, 0], '÷': [0, 0]}}; save.zd ??= {last: '', score: 0, best: 0, streak: 0, lastDone: ''};
+  const cmToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  function zgen(rnd) { const R2 = (a, b) => a + Math.floor(rnd() * (b - a + 1)), op = ZOPS[Math.floor(rnd() * 4)];
+    if (op === '+') { const a = R2(2, 100), b = R2(2, 100); return [a + ' + ' + b, a + b, op]; }
+    if (op === '−') { const a = R2(2, 100), b = R2(2, 100); return [(a + b) + ' − ' + a, b, op]; }
+    const a = R2(2, 12), b = R2(2, 100); return op === '×' ? [a + ' × ' + b, a * b, op] : [a * b + ' ÷ ' + a, b, op]; }
+  const zNew = () => { const [q, a, op] = zgen(st.rnd); Object.assign(st, {q, a, op, typed: '', qAt: st.tick}); };
+  function zStart(kind) {
+    const day = cmToday(), seed = [...'calcul-' + day].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
+    st = {zeta: true, kind, day, lvl: 0, i: 0, ok: 0, score: 0, mode: 'ready', fx: 0, last: null, tick: 0, t: ZT, rnd: kind === 'j' ? seeded(seed) : Math.random, ch: [], sel: 0, played: kind === 'j' && save.zd.last === day};
+    zNew();
+  }
+  function zType(d) {
+    if (st.mode !== 'play' || st.typed.length >= 6) return; st.typed += d;
+    if (+st.typed === st.a) {  // juste : on compte le temps de ce calcul pour son opération, et le suivant arrive
+      st.ok++; const o = save.z.ops[st.op]; o[0]++; o[1] += st.tick - st.qAt; st.last = {good: true, q: st.q, a: st.a}; st.fx = 14;
+      beep(880 + Math.min(12, st.ok % 13) * 30, .05); zNew();
+    }
+  }
+  function zFinish() {
+    st.mode = 'over'; st.dead = 0; save.z.games++; save.z.sum += st.ok;
+    st.newBest = st.ok > save.z.best; if (st.newBest) save.z.best = st.ok;
+    if (st.kind === 'j' && !st.played) { const D = save.zd, y = new Date(); y.setDate(y.getDate() - 1); const yd = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+      D.streak = D.lastDone === yd ? D.streak + 1 : 1; D.last = D.lastDone = st.day; D.score = st.ok; D.best = Math.max(D.best, st.ok); }
+    keep(); info(); [523, 659, 784, 1047].forEach((f, i) => beep(f, .15, 'square', 0, .03, i * .1));
+  }
   // 3 mauvaises réponses proches de la bonne, toutes différentes et positives
   const choices = v => { const s = new Set([v]); for (let k = 1; s.size < 4; k++) { const d = [1, 2, 10, -1, -2, -10, 5, -5, k + 2][r(0, 8)], w = v + d; if (w >= 0) s.add(w); } return [...s].sort(() => Math.random() - .5); };
   let g = null, st = null;
@@ -377,6 +408,7 @@ export default async function (ctx) {
     st.tick++; if (st.fx) st.fx--;
     if (st.mode === 'over') { st.dead++; return; }
     if (st.mode !== 'play') return;
+    if (st.zeta) { if (--st.t <= 0) zFinish(); return; }
     if (--st.t <= 0) answer(NaN);
   }
   const box = i => [24 + (i % 2) * 100, 92 + Math.floor(i / 2) * 20, 92, 16];
@@ -385,6 +417,7 @@ export default async function (ctx) {
     px(g, '#0a1420', 0, 0, W, H);
     for (let y = 0; y < H; y += 8) for (let x = (y / 8) % 2 * 4; x < W; x += 8) px(g, '#0e1a28', x, y, 1, 1);
     px(g, '#05080e', 0, 0, W, 15);
+    if (st.zeta) return zDraw();
     pxFont(g, 'Palier ' + st.lvl, 4, 11, '#ffffff');
     for (let i = 0; i < N; i++) px(g, i < st.i ? '#5ad0ff' : '#203040', 92 + i * 7, 5, 5, 5);
     pxFont(g, String(st.score), W - 4, 11, '#ffd84a', 8, 'right');
@@ -404,15 +437,37 @@ export default async function (ctx) {
       [st.ok + ' sur 10 · ' + st.score + ' points' + (st.newBest ? ' · record !' : ''), '#ffffff'], [st.stars ? (st.lvl < LEVELS.length ? 'Entrée : palier suivant' : 'Tous les paliers sont finis !') : 'Il faut 8 sur 10 · Entrée : recommencer', '#b8b0c8']], 36);
     if (st.tick % 15 === 0) g.canvas.setAttribute('aria-label', 'Calcul mental, palier ' + st.lvl + ', calcul ' + Math.min(N, st.i + 1) + ' sur 10 : ' + st.q + ' = ? Réponses : ' + st.ch.join(', ') + (st.mode === 'over' ? ', série finie : ' + st.ok + ' sur 10' : '') + '.');
   }
+  function zDraw() {
+    const sec = Math.ceil(st.t / 60);
+    pxFont(g, st.kind === 'j' ? 'Défi du jour · ' + st.day.slice(8) + '/' + st.day.slice(5, 7) : '2 minutes chrono', 4, 11, st.kind === 'j' ? '#ffd84a' : '#ffffff');
+    pxFont(g, Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'), W / 2 + 22, 11, sec <= 10 && st.mode === 'play' ? '#ff4a3a' : '#c8f0ff', 8, 'center');
+    pxFont(g, st.ok + ' juste' + (st.ok > 1 ? 's' : ''), W - 4, 11, '#ffd84a', 8, 'right');
+    if (st.mode === 'play' || st.mode === 'pause') {
+      px(g, '#203040', 4, 17, W - 8, 3); px(g, sec <= 10 ? '#ff4a3a' : '#5ad0ff', 4, 17, Math.round((W - 8) * st.t / ZT), 3);
+      pxFont(g, st.q + ' =', W / 2, 60, st.fx ? '#7ee07a' : '#ffffff', st.q.length > 10 ? 16 : 24, 'center');
+      px(g, '#05080e', W / 2 - 40, 76, 80, 26); px(g, '#1a2836', W / 2 - 39, 77, 78, 24);
+      pxFont(g, st.typed + (st.tick % 40 < 20 ? '_' : ''), W / 2, 96, '#ffd84a', 16, 'center');
+      if (st.last && st.fx) pxFont(g, st.last.q + ' = ' + st.last.a, W / 2, 30, '#7ee07a', 8, 'center');
+      pxFont(g, 'Sans Entrée · Retour : effacer', W / 2, 124, '#5a7088', 6, 'center');
+    }
+    if (st.mode === 'ready') gameText(g, W, [[st.kind === 'j' ? 'DÉFI DU JOUR' : '2 MINUTES CHRONO', '#5ad0ff', 12], ['Le plus de calculs possible en 2 minutes', '#ffffff'], [st.played ? 'Déjà fait aujourd’hui : ' + save.zd.score + ' (ne compte plus)' : 'Tape le résultat, sans Entrée', '#b8d0ff'], ['Entrée : commencer', '#b8b0c8']], 44);
+    if (st.mode === 'pause') gameText(g, W, [['PAUSE', '#5ad0ff', 12], ['Entrée : reprendre', '#b8b0c8']], 60);
+    if (st.mode === 'over' && st.dead > 20) gameText(g, W, [['TEMPS ÉCOULÉ', '#5ad0ff', 12], [st.ok + ' calcul' + (st.ok > 1 ? 's' : '') + ' juste' + (st.ok > 1 ? 's' : ''), '#ffd84a', 12],
+      [st.newBest ? 'Nouveau record !' : 'Record : ' + save.z.best, st.newBest ? '#7ee07a' : '#ffffff'], ['Entrée : rejouer', '#b8b0c8']], 40);
+    if (st.tick % 15 === 0) g.canvas.setAttribute('aria-label', 'Calcul mental, ' + (st.kind === 'j' ? 'défi du jour' : '2 minutes chrono') + ' : ' + st.q + ' = ? ' + st.ok + ' justes, ' + sec + ' secondes' + (st.mode === 'over' ? ', chrono fini : ' + st.ok + ' justes' : '') + '.');
+  }
   function info() {
+    const avg = op => { const [n, t] = save.z.ops[op]; return n ? op + ' ' + (t / n / 60).toFixed(1).replace('.', ',') + ' s' : ''; };
+    if (st?.zeta) return $('cmStats').replaceChildren(...[['Record (2 minutes)', save.z.best], ['Moyenne', save.z.games ? (save.z.sum / save.z.games).toFixed(1).replace('.', ',') : '-'], ['Défi du jour', (save.zd.last === cmToday() ? save.zd.score + ' justes' : 'à faire') + ' · série ' + save.zd.streak], ['Temps par calcul', ZOPS.map(avg).filter(Boolean).join(' · ') || '-']].flatMap(([a, c]) => [el('span', '', a), el('b', '', String(c))]));
     const stars = Object.values(save.stars).reduce((a, b) => a + b, 0);
     $('cmStats').replaceChildren(...[['Palier atteint', save.level], ['Étoiles', stars + ' / ' + LEVELS.length * 3], ['Calculs faits', save.done], ['Séries', save.series]].flatMap(([a, c]) => [el('span', '', a), el('b', '', String(c))]));
   }
-  const next = () => start(st.stars && st.lvl < LEVELS.length ? st.lvl + 1 : st.lvl);
+  const next = () => st.zeta ? zStart(st.kind) : start(st.stars && st.lvl < LEVELS.length ? st.lvl + 1 : st.lvl);
   document.addEventListener('keydown', e => {
     if (!on() || !st || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     const k = e.key;
     if (st.mode === 'over') { if ((k === 'Enter' || k === ' ') && st.dead > 30) { e.preventDefault(); next(); } return; }
+    if (st.zeta && st.mode === 'play') { if (/^[0-9]$/.test(k)) zType(k); else if (k === 'Backspace') st.typed = st.typed.slice(0, -1); else if (k === 'p' || k === 'P' || k === 'Escape') st.mode = 'pause'; else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (st.typed) { st.typed = ''; beep(180, .1, 'sawtooth', 90); } } return; }
     if (k === 'p' || k === 'P' || k === 'Escape') { if (st.mode === 'play') st.mode = 'pause'; else if (st.mode === 'pause') st.mode = 'play'; return; }
     if (st.mode !== 'play') { if (k === 'Enter' || k === ' ') { e.preventDefault(); st.mode = 'play'; } return; }
     if (/^[0-9]$/.test(k) && st.typed.length < 6) { st.typed += k; return; }
@@ -424,13 +479,15 @@ export default async function (ctx) {
   { const cv = $('cmCanvas');
     const at = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * W, (e.clientY - b.top) / b.height * H]; };
     const hit = ([x, y]) => [0, 1, 2, 3].find(i => { const [bx, by, bw, bh] = box(i); return x >= bx && x < bx + bw && y >= by && y < by + bh; });
-    cv.onpointermove = e => { if (st?.mode === 'play') { const i = hit(at(e)); if (i !== undefined) st.sel = i; } };
+    cv.onpointermove = e => { if (st?.mode === 'play' && !st.zeta) { const i = hit(at(e)); if (i !== undefined) st.sel = i; } };
     cv.onpointerdown = e => { e.preventDefault(); if (!st) return;
       if (st.mode === 'over') { if (st.dead > 30) next(); return; }
       if (st.mode !== 'play') { st.mode = 'play'; return; }
+      if (st.zeta) return;
       const i = hit(at(e)); if (i !== undefined) answer(st.ch[i]); };
   }
-  $('cmNew').onclick = () => { start(+lvlSel.value || 1); $('cmNew').blur(); };
+  $('cmNew').onclick = () => { const v = lvlSel.value; if (v === 'z' || v === 'j') zStart(v); else start(+v || 1); info(); $('cmNew').blur(); };
+  lvlSel.onchange = () => { const v = lvlSel.value; if (v === 'z' || v === 'j') zStart(v); else start(+v || 1); info(); lvlSel.blur(); };
   $('cmFs').onclick = () => { $('cmFs').blur(); if (document.fullscreenElement) document.exitFullscreen(); else $('cmCanvas').parentElement.requestFullscreen?.().catch(() => {}); };
   padKeys();
   fillLevels(); lvlSel.value = String(save.level);
@@ -443,6 +500,10 @@ export default async function (ctx) {
       if (Function('return ' + e)() !== v) { bad.push(L + ' : ' + t + ' ≠ ' + v); break; }
       if (new Set(c).size !== 4 || !c.includes(v)) { bad.push(L + ' : choix ' + c); break; }
     }
+    for (let n = 0; n < 400; n++) { const [t, v] = zgen(Math.random); if (!Number.isInteger(v) || v < 0 || Function('return ' + t.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-'))() !== v) { bad.push('2 minutes : ' + t + ' = ' + v); break; } }
+    zStart('z'); st.mode = 'play'; for (let n = 0; n < 5; n++) for (const d of String(st.a)) zType(d); if (st.ok !== 5) bad.push('2 minutes : réponses justes mal comptées');
+    st.t = 1; update(); if (st.mode !== 'over' || save.z.best !== 5) bad.push('2 minutes : fin du chrono');
+    zStart('j'); const q1 = st.q; zStart('j'); if (st.q !== q1) bad.push('défi du jour : calculs différents');
     start(1); st.mode = 'play'; for (let i = 0; i < N; i++) answer(st.a);
     if (st.mode !== 'over' || st.ok !== 10 || st.stars !== 3 || save.level < 2) bad.push('série parfaite mal comptée');
     console.assert(!bad.length, 'calcul', bad); view.dataset.selfcheck = bad.join(' | ') || 'ok';

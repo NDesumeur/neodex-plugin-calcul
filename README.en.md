@@ -4,6 +4,10 @@ Series of 10 quick sums against the clock, in harder and harder tiers. In pixel 
 
 *Version française : [README.md](README.md)*
 
+## 2-minute sprint and daily challenge (new in 1.1.0)
+
+In the level list, **2-minute sprint**: as many sums as you can in two minutes (additions and subtractions up to 200, times tables up to 12 × 100, divisions). Type the answer: as soon as it is right, the next one appears, no Enter. Your record and average are kept, along with the average time per operation. **Daily challenge**: the same sums for everyone, counted once a day with its streak.
+
 ## Controls
 
 - **Keyboard**: type the result, **Enter** to confirm, **Backspace** to fix.

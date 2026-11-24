@@ -13,6 +13,20 @@ module.exports = async ({ pj, sleep }) => {
   await sleep(600);
   const l = await label();
   if (!/série finie : 10 sur 10/.test(l)) throw new Error('la série devait finir à 10 sur 10 : « ' + l + ' »');
+  // 2 minutes chrono : six calculs justes tapés sans Entrée, puis la fin du chrono et le record ; le défi du jour compté une fois
+  const pick = v => pj("(() => { const s = document.getElementById('cmLevel'); s.value = '" + v + "'; s.dispatchEvent(new Event('change')); return 0; })()");
+  const solve = t => Function('return ' + t.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-'))();
+  await pick('z'); await sleep(200); await key('Enter'); await sleep(200);
+  for (let i = 0; i < 6; i++) { const m = /: (.+) = \?/.exec(await label()); if (!m) throw new Error('2 minutes : pas de calcul ' + await label()); for (const d of String(solve(m[1]))) await key(d); await sleep(300); }
+  const zl = await label(); if (!/ 6 justes/.test(zl)) throw new Error('2 minutes : ' + zl);
+  if (process.env.NEO_SHOTS) { const d = await pj("document.getElementById('cmCanvas').toDataURL()"); require('fs').writeFileSync(require('path').join(process.env.NEO_SHOTS, 'calcul-2min.png'), Buffer.from(d.split(',')[1], 'base64')); }
+  await pj("(() => { const c = document.getElementById('cmCanvas'); return 0; })()");
+  await sleep(100); await pj("document.dispatchEvent(new KeyboardEvent('keydown', {key: 'p', bubbles: true})), 0");
+  if (!/2 minutes chrono/.test(await label())) throw new Error('2 minutes : pause');
+  await pick('j'); await sleep(200); await key('Enter'); await sleep(200);
+  const m1 = /: (.+) = \?/.exec(await label()); for (const d of String(solve(m1[1]))) await key(d); await sleep(300);
+  if (!/Défi du jour/.test(await pj("document.getElementById('cmStats').textContent"))) throw new Error('défi du jour : stats');
+  await pick('1'); await sleep(200);
   // plein écran, et l'ardoise qui tient dans la fenêtre
   await pj(`document.getElementById('cmFs').click(), 0`); await sleep(700);
   const fs = await pj(`(() => { const c = document.getElementById('cmCanvas'), r = c.getBoundingClientRect(); return document.fullscreenElement === c.parentElement && (Math.abs(r.height - innerHeight) < 3 || Math.abs(r.width - innerWidth) < 3); })()`);

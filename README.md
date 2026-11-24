@@ -4,6 +4,10 @@ Des séries de 10 calculs rapides, contre la montre, par paliers de plus en plus
 
 *English version: [README.en.md](README.en.md)*
 
+## 2 minutes chrono et défi du jour (nouveau en 1.1.0)
+
+Dans la liste des paliers, **2 minutes chrono** : le plus de calculs possible en deux minutes (additions et soustractions jusqu'à 200, tables jusqu'à 12 × 100, divisions). Tape le résultat : dès qu'il est juste, le suivant arrive, sans Entrée. Le record et la moyenne sont gardés, ainsi que le temps moyen par opération. **Défi du jour** : les mêmes calculs pour tout le monde, compté une fois par jour avec sa série.
+
 ## Commandes
 
 - **Clavier** : tape le résultat avec les chiffres, **Entrée** pour valider, **Retour arrière** pour corriger.
