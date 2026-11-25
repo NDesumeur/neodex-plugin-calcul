@@ -1,7 +1,7 @@
 {
   "id": "neodex.calcul",
   "name": "Calcul mental",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "NDesumeur",
   "description": "Calcul mental en pixel art : des séries de 10 calculs contre la montre, par paliers. Additions, soustractions, tables, divisions, puis deux opérations, carrés et pourcentages. Tape le résultat ou choisis parmi 4 réponses, au clavier, à la souris ou à la manette. 8 sur 10 ouvrent le palier suivant ; plein écran, et l'ardoise s'adapte à la taille de la fenêtre. Calcul mental en pixel art : des séries de 10 calculs contre la montre, par paliers (additions, tables, divisions, deux opérations, carrés, pourcentages). Mode 2 minutes chrono : le plus de calculs possible, validés dès qu'ils sont justes, avec record et temps moyen par opération ; et un défi du jour, les mêmes calculs pour tout le monde. Clavier, souris ou manette, plein écran.",
   "icon": "icon.png",
@@ -23,5 +23,62 @@
   "sdk": "2.1.0",
   "permissions": [
     "storage"
+  ],
+  "succes": [
+    {
+      "id": "p1",
+      "nom": "Un plus un",
+      "texte": "Réussir le premier palier"
+    },
+    {
+      "id": "p5",
+      "nom": "Les tables en poche",
+      "texte": "Réussir le palier Divisions"
+    },
+    {
+      "id": "p10",
+      "nom": "Calculateur expert",
+      "texte": "Réussir le palier Expert"
+    },
+    {
+      "id": "etoiles",
+      "nom": "Trente étoiles",
+      "texte": "Gagner 3 étoiles sur les 10 paliers",
+      "cache": true
+    },
+    {
+      "id": "mille",
+      "nom": "Mille calculs",
+      "texte": "Faire 1 000 calculs dans les paliers"
+    },
+    {
+      "id": "z40",
+      "nom": "Tête bien faite",
+      "texte": "Faire 40 calculs justes en 2 minutes"
+    },
+    {
+      "id": "z70",
+      "nom": "Machine à calculer",
+      "texte": "Faire 70 calculs justes en 2 minutes"
+    },
+    {
+      "id": "jour7",
+      "nom": "Une semaine de calcul",
+      "texte": "Faire le défi du jour 7 jours de suite"
+    }
+  ],
+  "records": [
+    {
+      "id": "chrono",
+      "nom": "Record en 2 minutes",
+      "sens": "haut",
+      "format": "nombre"
+    },
+    {
+      "id": "etoiles",
+      "nom": "Étoiles",
+      "sens": "haut",
+      "format": "nombre"
+    }
   ]
 }

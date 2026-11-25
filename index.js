@@ -334,6 +334,9 @@ export default async function (ctx) {
   const W = 240, H = 136, N = 10;
   const save = { level: 1, stars: {}, best: {}, done: 0, series: 0, ...(await doc('records')) };
   const keep = () => folder.write('records', save).catch(() => {});
+  // les trophées de NeoDex (3.4.8 et plus) : succès et records déclarés dans plugin.json ; sur un NeoDex plus ancien, rien ne se passe
+  const trophy = id => { ctx.games?.unlock(id).catch(() => {}); };
+  const trophyRecord = (id, v) => { if (v != null && Number.isFinite(+v)) ctx.games?.record(id, +v).catch(() => {}); };
   const r = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
   // chaque palier : son nom, le temps par calcul (en images à 60/s) et un tirage [texte, résultat]
   const LEVELS = [
@@ -457,6 +460,7 @@ export default async function (ctx) {
     if (st.tick % 15 === 0) g.canvas.setAttribute('aria-label', 'Calcul mental, ' + (st.kind === 'j' ? 'défi du jour' : '2 minutes chrono') + ' : ' + st.q + ' = ? ' + st.ok + ' justes, ' + sec + ' secondes' + (st.mode === 'over' ? ', chrono fini : ' + st.ok + ' justes' : '') + '.');
   }
   function info() {
+    setTimeout(cmTrophies);
     const avg = op => { const [n, t] = save.z.ops[op]; return n ? op + ' ' + (t / n / 60).toFixed(1).replace('.', ',') + ' s' : ''; };
     if (st?.zeta) return $('cmStats').replaceChildren(...[['Record (2 minutes)', save.z.best], ['Moyenne', save.z.games ? (save.z.sum / save.z.games).toFixed(1).replace('.', ',') : '-'], ['Défi du jour', (save.zd.last === cmToday() ? save.zd.score + ' justes' : 'à faire') + ' · série ' + save.zd.streak], ['Temps par calcul', ZOPS.map(avg).filter(Boolean).join(' · ') || '-']].flatMap(([a, c]) => [el('span', '', a), el('b', '', String(c))]));
     const stars = Object.values(save.stars).reduce((a, b) => a + b, 0);
@@ -513,5 +517,12 @@ export default async function (ctx) {
   start(save.level);
   const STEP = 1000 / 60; let acc = 0, last = performance.now(), raf = 0;
   const frame = t => { if (!on()) { raf = 0; if (st.mode === 'play') st.mode = 'pause'; return; } raf = requestAnimationFrame(frame); acc += Math.min(200, t - last); last = t; while (acc >= STEP) { update(); acc -= STEP; } draw(); };
+  // les trophées, tirés des statistiques et des records gardés (aussi à l'ouverture : ce qui a été fait avant compte)
+  function cmTrophies() {
+    const s = LEVELS.map((L, i) => save.stars[i + 1] || 0), st = s.reduce((a, b) => a + b, 0), sig = [s.join(''), save.done, save.z.best, save.zd.streak].join(); if (sig === cmTrophies.sig) return; cmTrophies.sig = sig;
+    trophyRecord('chrono', save.z.best || null); trophyRecord('etoiles', st || null);
+    if (s[0]) trophy('p1'); if (s[4]) trophy('p5'); if (s[9]) trophy('p10'); if (st >= LEVELS.length * 3) trophy('etoiles'); if (save.done >= 1000) trophy('mille');
+    if (save.z.best >= 40) trophy('z40'); if (save.z.best >= 70) trophy('z70'); if (save.zd.streak >= 7) trophy('jour7');
+  }
   ctx.onOpen(() => { g ??= $('cmCanvas').getContext('2d'); info(); last = performance.now(); if (!raf) raf = requestAnimationFrame(frame); });
 }
